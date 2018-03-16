@@ -65,8 +65,25 @@ def mask_prec(val, maxp, hp = None):
     lp = hp - maxp
     #minf = np.exp2(lp)
     minf = 2 ** int(lp)
-    print lp, minf, np.floor(val / minf)
+    #print lp, minf, np.floor(val / minf)
     return np.floor(val / minf) * minf
+
+def is_divided(s, d, r = None):
+    if r is None:
+        r = s / d
+    ms, es = np.frexp(s)
+    md, ed = np.frexp(d)
+    mr, er = np.frexp(r)
+    bs = 2 ** FCAP_MAX_PRECISION
+    si = int(ms * bs)
+    di = int(md * bs)
+    ri = int(mr * bs)
+    rshft = 53 + es - er - ed
+    rie = di * ri
+    sie = (rie >> rshft)
+    chb = (rie & ((2 << rshft) - 1))
+    print si, sie, chb
+    return si == sie and chb == 0
 
 def _c_val_isin(val, loprec, fractal, context):
     vals = []
@@ -136,6 +153,8 @@ class float_ex(float):
         elif mname == '__div__':
             if isinstance(dst, float_ex):
                 raise TypeError('unsupported operand.')
+            #if not is_divided(self, dst, val):
+            #    raise ValueError('is not divided.')
             maxrlp = minlp
         else:
             if not dst is None:
