@@ -66,18 +66,15 @@ class fractal(object):
 
     def __contains__(self, vals):
         vals = _2list(vals)
-        groups = []
         for axis, val in enumerate(vals):
             if isinstance(val, float_ex):
                 dst_frac = float_ex.fractal
-                if (isinstance(dst_frac, sub_fractal)
+                if not (isinstance(dst_frac, sub_fractal)
                     and dst_frac.parent == self
-                    and dst_frac.check_axis(axis)):
-                    groups.append(axis)
-                else:
+                    and axis in dst_frac.axis):
                     return False
             else:
-                return self.checkin(val)
+                pass
 
     def __getitem__(self, rngs):
         rngs = _2list(rngs)
@@ -92,10 +89,17 @@ class fractal(object):
 
 class sub_fractal(fractal):
 
-    def __init__(self, parent, groups):
+    def __init__(self, parent, axis):
         super(sub_fractal, self).__init__()
         self.parent = parent
-        self.groups = _2list(groups)
+        self.axis = _2list(axis)
 
-    def check_axis(self, axis):
-        return axis in self.groups
+    def __eq__(self, dst):
+        return self is dst or (isinstance(dst, sub_fractal)
+            and self.parent == dst.parent
+            and self.axis == dst.axis)
+
+    def __neq__(self, dst):
+        return not self == dst
+
+
