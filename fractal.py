@@ -82,7 +82,6 @@ def is_divided(s, d, r = None):
     rie = di * ri
     sie = (rie >> rshft)
     chb = (rie & ((1 << rshft) - 1))
-    assert False
     print si, sie, chb, rie, rshft
     return si == sie and chb == 0
 
