@@ -40,7 +40,7 @@ class meta_arith_ex(type):
 
 from sys import float_info as _float_info
 
-FCAP_MAX_PRECISION = _float_info.mant_dig - 1
+FCAP_MAX_PRECISION = _float_info.mant_dig
 FEX_MAX_PRECISION = 40
 
 def highest_prec(val):
@@ -91,8 +91,7 @@ class float_ex(float):
     def __new__(cls, val, fractal, context, loprec = None):
         hiprec, _, vlp = prec_info(val)
         minlp = hiprec - FCAP_MAX_PRECISION
-        if vlp < minlp:
-            raise ValueError('float64 overflow.')
+        assert vlp >= minlp
         if loprec is None:
             loprec = hiprec - FEX_MAX_PRECISION
         if loprec < minlp:
