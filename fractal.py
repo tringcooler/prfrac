@@ -41,7 +41,7 @@ class meta_arith_ex(type):
 from sys import float_info as _float_info
 
 FCAP_MAX_PRECISION = _float_info.mant_dig
-FEX_MAX_PRECISION = 20
+FEX_MAX_PRECISION = 40
 
 def highest_prec(val):
     #return np.floor(np.log2(abs(val))) + 1
@@ -68,6 +68,22 @@ def mask_prec(val, maxp, hp = None):
     print lp, minf, np.floor(val / minf)
     return np.floor(val / minf) * minf
 
+def _c_val_isin(val, loprec, fractal, context):
+    vals = []
+    axis = []
+    for idx, itm in enumerate(context):
+        if itm is None:
+            itm = val
+            axis.append(idx)
+        vals.append(itm)
+    ovr, eqr = fractal.has_val(*vals)
+    ov = True
+    eq = True
+    for idx in axis:
+        eq = (eq and eqr[idx])
+        ov = (ov and ovr[idx])
+    return ov, eq
+
 class float_ex(float):
     
     __metaclass__ = meta_arith_ex
@@ -80,17 +96,20 @@ class float_ex(float):
             loprec = hiprec - FEX_MAX_PRECISION
         if loprec < minlp:
             raise ValueError('float64 overflow.')
-        #loprec = min(loprec, vlp)
         if loprec > vlp:
             loprec = vlp
-        if not fractal.checkin(val, context, loprec):
+        ov, eq = _c_val_isin(val, loprec, fractal, context)
+        if eq:
+            return val
+        elif ov:
+            inst = super(float_ex, cls).__new__(cls, val)
+            inst.fractal = fractal
+            inst.context = context
+            inst.hiprec = hiprec
+            inst.loprec = loprec
+            return inst
+        else:
             raise ValueError('not in the fractal:{0}'.format(val))
-        inst = super(float_ex, cls).__new__(cls, val)
-        inst.fractal = fractal
-        inst.context = context
-        inst.hiprec = hiprec
-        inst.loprec = loprec
-        return inst
 
     def __init__(self, val, *args):
         super(float_ex, self).__init__(val)
@@ -122,10 +141,7 @@ class float_ex(float):
             if not dst is None:
                 raise TypeError('unsupported operand.')
             maxrlp = slp
-        return type(self)(val, self.fractal, maxrlp)
-
-    def _fix_prec(self, val):
-        pass
+        return type(self)(val, self.fractal, self.context, maxrlp)
     
 
 def _2list(val):
@@ -139,17 +155,26 @@ class fractal(object):
     def __init__(self):
         pass
 
+    def has_val(self, *args):
+        ov = []
+        eq = []
+        for axis, val in enumerate(args):
+            if isinstance(val, float_ex):
+                eq.append(False)
+            else:
+                #eq.append(True)
+                eq.append(False)
+            ov.append(True)
+        return ov, eq
+
     def __contains__(self, vals):
         vals = _2list(vals)
-        for axis, val in enumerate(vals):
-            if isinstance(val, float_ex):
-                dst_frac = float_ex.fractal
-                if not (isinstance(dst_frac, sub_fractal)
-                    and dst_frac.parent == self
-                    and axis in dst_frac.axis):
-                    return False
-            else:
-                pass
+        ov, eq = self.has_val(*vals)
+        for r in ov:
+            if r:
+                return True
+        else:
+            return False
 
     def __getitem__(self, rngs):
         rngs = _2list(rngs)
@@ -162,19 +187,13 @@ class fractal(object):
             else:
                 pass
 
-class sub_fractal(fractal):
+class baker_frac(fractal):
 
-    def __init__(self, parent, axis):
-        super(sub_fractal, self).__init__()
-        self.parent = parent
-        self.axis = _2list(axis)
+    def __init__(self):
+        super(baker_frac, self).__init__()
 
-    def __eq__(self, dst):
-        return self is dst or (isinstance(dst, sub_fractal)
-            and self.parent == dst.parent
-            and self.axis == dst.axis)
+    def has_val(self, x, y):
+        pass
 
-    def __neq__(self, dst):
-        return not self == dst
 
 
