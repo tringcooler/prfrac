@@ -72,52 +72,57 @@ class float_ex(float):
     
     __metaclass__ = meta_arith_ex
     
-    def __new__(cls, val, fractal):
-        hiprec = highest_prec(val)
-        r = super(float_ex, cls).__new__(cls, val)
-        r.hiprec = hiprec
-        return r
+    def __new__(cls, val, fractal, context, loprec = None):
+        hiprec, _, vlp = prec_info(val)
+        minlp = hiprec - FCAP_MAX_PRECISION
+        assert vlp >= minlp
+        if loprec is None:
+            loprec = hiprec - FEX_MAX_PRECISION
+        if loprec < minlp:
+            raise ValueError('float64 overflow.')
+        #loprec = min(loprec, vlp)
+        if loprec > vlp:
+            loprec = vlp
+        if not fractal.checkin(val, context, loprec):
+            raise ValueError('not in the fractal:{0}'.format(val))
+        inst = super(float_ex, cls).__new__(cls, val)
+        inst.fractal = fractal
+        inst.context = context
+        inst.hiprec = hiprec
+        inst.loprec = loprec
+        return inst
 
-    def __init__(self, val, fractal):
+    def __init__(self, val, *args):
         super(float_ex, self).__init__(val)
-        self.fractal = fractal
-        if hiprec is None:
-            hiprec = highest_prec(val)
 
     def __expand__(self, val, mname, *args):
         _chk = lambda mn, lst: reduce(lambda r, v: r or v in mn, lst, False)
-        def _hp(val):
-            if hasattr(val, hiprec):
-                return val.hiprec
+        def _prec(val):
+            if hasattr(val, 'hiprec'):
+                return val.hiprec, val.hiprec - val.loprec, val.loprec
             else:
-                return highest_prec(val)
-        shp = _hp(self)
-        svp = FEX_MAX_PRECISION
-        slp = shp - svp
-        if(len(args) > 0):
+                return prec_info(val)
+        shp, svp, slp = _prec(self)
+        if len(args) > 0:
             dst = args[0]
-            if isinstance(dst, float_ex):
-                dhp = _hp(dst)
-                dvp = FEX_MAX_PRECISION
-                dlp = dhp - dvp
-            else:
-                dhp, dvp, dlp = prec_info(val)
-        if _chk(mname, ['add', 'sub']):
+            dhp, dvp, dlp = _prec(args[0])
             maxhp = max(shp, dhp)
             minlp = min(slp, dlp)
-            maxrvp = maxhp + 1 - minlp
-        elif _chk(mname, ['mul', 'div']):
-            dst = arg[0]
+        else:
+            dst = None
+        if _chk(mname, ['add', 'sub']):
+            maxrlp = minlp
+        elif 'mul' in mname:
+            maxrlp = slp + dlp
+        elif mname == '__div__':
             if isinstance(dst, float_ex):
-                dhp = _hp(dst)
-                dvp = FEX_MAX_PRECISION
-                dlp = dhp - dvp
-            else:
-                dhp, dvp, dlp = prec_info(val)
-            maxrvp = svp + dvp
-        if maxrvp > FCAP_MAX_PRECISION:
-            raise ValueError('float64 overflow.')
-        return type(self)(val, self.fractal)
+                raise TypeError('unsupported operand.')
+            maxrlp = minlp
+        else:
+            if not dst is None:
+                raise TypeError('unsupported operand.')
+            maxrlp = slp
+        return type(self)(val, self.fractal, maxrlp)
 
     def _fix_prec(self, val):
         pass
