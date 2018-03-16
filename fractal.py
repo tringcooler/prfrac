@@ -16,7 +16,7 @@ class meta_arith_ex(type):
         '''.split() 
     
     def __new__(metaname, classname, baseclasses, attrs):
-        def exp(self, val):
+        def exp(self, val, mname):
             return type(self)(val)
         if not '__expand__' in attrs:
             attrs['__expand__'] = exp
@@ -33,18 +33,21 @@ class meta_arith_ex(type):
                     except:
                         return NotImplemented
                     r = smeth(*args, **kargs)
-                    return self.__expand__(r)
+                    return self.__expand__(r, mn, *args)
                 return _wrapper
             attrs[mn] = mdst(mn)
         return type.__new__(metaname, classname, baseclasses, attrs)
 
+FCAP_MAX_PRECISION = 50
 FEX_MAX_PRECISION = 40
 
 def highest_prec(val):
-    return np.floor(np.log2(val))
+    return np.floor(np.log2(abs(val)))
 
-def mask_prec(val, maxp):
-    lp = highest_prec(val) - maxp + 1
+def mask_prec(val, maxp, hp = None):
+    if hp is None:
+        hp = highest_prec(val)
+    lp = hp - maxp + 1
     #minf = np.exp2(lp)
     minf = 2 ** int(lp)
     print lp, minf, np.floor(val / minf)
@@ -54,15 +57,38 @@ class float_ex(float):
     
     __metaclass__ = meta_arith_ex
     
-    def __new__(cls, val, fractal):
+    def __new__(cls, val, fractal, hiprec = None):
         return super(float_ex, cls).__new__(cls, val)
 
-    def __init__(self, val, fractal):
+    def __init__(self, val, fractal, hiprec = None):
         super(float_ex, self).__init__(val)
         self.fractal = fractal
+        if hiprec is None:
+            hiprec = highest_prec(val)
+        self.hiprec = hiprec
 
-    def __expand__(self, val):
-        return type(self)(val, self.fractal)
+    def __expand__(self, val, mname, *args):
+        _chk = lambda mn, lst: reduce(lambda r, v: r or v in mn, lst, False)
+        def _hp(val):
+            if hasattr(val, hiprec):
+                return val.hiprec
+            else:
+                return highest_prec(val)
+        shp = _hp(self)
+        rhp = _hp(val)
+        minhp = min(shp, rhp)
+        maxhp = max(shp, rhp)
+        _mm = lambda dhp: (min(minhp, dhp), max(maxhp, dhp))
+        if _chk(mname, ['add', 'sub']):
+            minhp, maxhp = _mm(_hp(arg[0]))
+        elif _chk(mname, ['mul', 'div']):
+            minhp, maxhp = _mm(_hp(arg[0]))
+        if maxhp - minhp > FCAP_MAX_PRECISION - FEX_MAX_PRECISION:
+            raise ValueError('float64 overflow.')
+        return type(self)(val, self.fractal, rhp)
+
+    def _fix_prec(self, val):
+        pass
     
 
 def _2list(val):
