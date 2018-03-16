@@ -38,16 +38,28 @@ class meta_arith_ex(type):
             attrs[mn] = mdst(mn)
         return type.__new__(metaname, classname, baseclasses, attrs)
 
-FCAP_MAX_PRECISION = 50
-FEX_MAX_PRECISION = 40
+from sys import float_info as _float_info
+
+FCAP_MAX_PRECISION = _float_info.mant_dig
+FEX_MAX_PRECISION = 20
 
 def highest_prec(val):
-    return np.floor(np.log2(abs(val)))
+    #return np.floor(np.log2(abs(val))) + 1
+    m, e = np.frexp(val)
+    return e
+
+def lowest_prec(val, hp = None):
+    if hp is None:
+        hp = highest_prec(val)
+    #maxf = np.exp2(hp)
+    maxf = 2 ** int(hp)
+    cof = maxf - val
+    return 
 
 def mask_prec(val, maxp, hp = None):
     if hp is None:
         hp = highest_prec(val)
-    lp = hp - maxp + 1
+    lp = hp - maxp
     #minf = np.exp2(lp)
     minf = 2 ** int(lp)
     print lp, minf, np.floor(val / minf)
@@ -75,14 +87,21 @@ class float_ex(float):
             else:
                 return highest_prec(val)
         shp = _hp(self)
-        rhp = _hp(val)
-        minhp = min(shp, rhp)
-        maxhp = max(shp, rhp)
-        _mm = lambda dhp: (min(minhp, dhp), max(maxhp, dhp))
         if _chk(mname, ['add', 'sub']):
-            minhp, maxhp = _mm(_hp(arg[0]))
+            dhp = _hp(arg[0])
+            minhp = min(shp, dhp)
+            maxhp = max(shp, dhp)
+            maxrhp = maxhp + 1
+            if maxrhp - minhp > FCAP_MAX_PRECISION - FEX_MAX_PRECISION:
+                raise ValueError('float64 overflow.')
         elif _chk(mname, ['mul', 'div']):
-            minhp, maxhp = _mm(_hp(arg[0]))
+            dst = arg[0]
+            if isinstance(dst, float_ex):
+                raise ValueError('float_ex mul/div')
+            dhp = _hp(dst)
+            maxrhp = (shp + 1) + (dhp + 1)
+            
+            
         if maxhp - minhp > FCAP_MAX_PRECISION - FEX_MAX_PRECISION:
             raise ValueError('float64 overflow.')
         return type(self)(val, self.fractal, rhp)
