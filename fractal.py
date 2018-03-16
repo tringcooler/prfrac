@@ -153,8 +153,8 @@ class float_ex(float):
         elif mname == '__div__':
             if isinstance(dst, float_ex):
                 raise TypeError('unsupported operand.')
-            #if not is_divided(self, dst, val):
-            #    raise ValueError('is not divided.')
+            if not is_divided(self, dst, val):
+                raise ValueError('is not divided.')
             maxrlp = minlp
         else:
             if not dst is None:
