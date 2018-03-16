@@ -41,16 +41,61 @@ class meta_arith_ex(type):
 class float_ex(float):
     
     __metaclass__ = meta_arith_ex
-    
-    def __new__(cls, val, exfunc):
-        return super(float_ex, cls).__new__(cls, val)
-
-    def __init__(self, val, exfunc):
-        super(float_ex, self).__init__(val)
-        self.exfunc = exfunc
 
     def __expand__(self, val):
-        return type(self)(val, self.exfunc)
-        
-
+        return type(self)(val, self.fractal)
     
+    def __new__(cls, val, fractal):
+        return super(float_ex, cls).__new__(cls, val)
+
+    def __init__(self, val, fractal):
+        super(float_ex, self).__init__(val)
+        self.fractal = fractal
+    
+
+def _2list(val):
+    if not hasattr(val, '__iter__'):
+        return [val]
+    else:
+        return val
+
+class fractal(object):
+
+    def __init__(self):
+        pass
+
+    def __contains__(self, vals):
+        vals = _2list(vals)
+        groups = []
+        for axis, val in enumerate(vals):
+            if isinstance(val, float_ex):
+                dst_frac = float_ex.fractal
+                if (isinstance(dst_frac, sub_fractal)
+                    and dst_frac.parent == self
+                    and dst_frac.check_axis(axis)):
+                    groups.append(axis)
+                else:
+                    return False
+            else:
+                return self.checkin(val)
+
+    def __getitem__(self, rngs):
+        rngs = _2list(rngs)
+        for axis, rng in enumerate(rngs):
+            if isinstance(rng, slice):
+                if rng.step is None:
+                    pass
+                else:
+                    pass
+            else:
+                pass
+
+class sub_fractal(fractal):
+
+    def __init__(self, parent, groups):
+        super(sub_fractal, self).__init__()
+        self.parent = parent
+        self.groups = _2list(groups)
+
+    def check_axis(self, axis):
+        return axis in self.groups
