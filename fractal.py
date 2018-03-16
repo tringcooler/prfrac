@@ -78,12 +78,11 @@ def is_divided(s, d, r = None):
     si = int(ms * bs)
     di = int(md * bs)
     ri = int(mr * bs)
-    rshft = 53 + es - er - ed
+    rshft = int(53 + es - er - ed)
     rie = di * ri
     sie = (rie >> rshft)
     chb = (rie & ((1 << rshft) - 1))
-    print si, sie, chb, rie, rshft
-    assert False
+    #print si, sie, chb, rie, rshft
     return si == sie and chb == 0
 
 def _c_val_isin(val, loprec, fractal, context):
