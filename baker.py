@@ -129,7 +129,11 @@ def plot_history(src, sbplts, color = 'b'):
         _plt(dst, i)
 
 def plot_histories(src, dsts, sbplts):
-    n = len(sbplts) - 1
+    if hasattr(sbplts, '__iter__'):
+        n = len(sbplts) - 1
+    else:
+        n = sbplts
+        sbplts = plots(n + 1)
     colors = ['b', 'r', 'g', 'y']
     pn = min(max(len(colors), 0), n)
     color = lambda i: colors[n - i]
