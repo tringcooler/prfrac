@@ -83,6 +83,7 @@ def is_divided(s, d, r = None):
     sie = (rie >> rshft)
     chb = (rie & ((1 << rshft) - 1))
     print si, sie, chb, rie, rshft
+    assert False
     return si == sie and chb == 0
 
 def _c_val_isin(val, loprec, fractal, context):
