@@ -38,12 +38,21 @@ class meta_arith_ex(type):
             attrs[mn] = mdst(mn)
         return type.__new__(metaname, classname, baseclasses, attrs)
 
+FEX_MAX_PRECISION = 40
+
+def highest_prec(val):
+    return np.floor(np.log2(val))
+
+def mask_prec(val, maxp):
+    lp = highest_prec(val) - maxp + 1
+    #minf = np.exp2(lp)
+    minf = 2 ** int(lp)
+    print lp, minf, np.floor(val / minf)
+    return np.floor(val / minf) * minf
+
 class float_ex(float):
     
     __metaclass__ = meta_arith_ex
-
-    def __expand__(self, val):
-        return type(self)(val, self.fractal)
     
     def __new__(cls, val, fractal):
         return super(float_ex, cls).__new__(cls, val)
@@ -51,6 +60,9 @@ class float_ex(float):
     def __init__(self, val, fractal):
         super(float_ex, self).__init__(val)
         self.fractal = fractal
+
+    def __expand__(self, val):
+        return type(self)(val, self.fractal)
     
 
 def _2list(val):
