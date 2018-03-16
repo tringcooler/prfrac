@@ -16,32 +16,41 @@ class meta_arith_ex(type):
         '''.split() 
     
     def __new__(metaname, classname, baseclasses, attrs):
+        def exp(self, val):
+            return type(self)(val)
+        if not '__expand__' in attrs:
+            attrs['__expand__'] = exp
         for mn in meta_arith_ex.method_names:
             #mn = '__{:s}__'.format(mn)
+            if mn in attrs:
+                continue
             def mdst(mn):
                 def _wrapper(self, *args, **kargs):
+                    #print '_wrapper', mn
                     cls = type(self)
                     try:
                         smeth = getattr(super(cls, self), mn)
                     except:
                         return NotImplemented
                     r = smeth(*args, **kargs)
-                    return cls(r)
+                    return self.__expand__(r)
                 return _wrapper
             attrs[mn] = mdst(mn)
         return type.__new__(metaname, classname, baseclasses, attrs)
 
 class float_ex(float):
-
+    
     __metaclass__ = meta_arith_ex
-
-class _float_ex(float):
-
-    def __new__(self, val, exfunc):
-        return super(float_ex, float_ex).__new__(float_ex, val)
+    
+    def __new__(cls, val, exfunc):
+        return super(float_ex, cls).__new__(cls, val)
 
     def __init__(self, val, exfunc):
         super(float_ex, self).__init__(val)
         self.exfunc = exfunc
+
+    def __expand__(self, val):
+        return type(self)(val, self.exfunc)
+        
 
     
