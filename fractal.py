@@ -59,10 +59,10 @@ def prec_info(val):
         v += 1
     return h, v, l
 
-def mask_prec(val, maxp, hp = None):
+def mask_prec(val, lp, hp = None):
     if hp is None:
         hp = highest_prec(val)
-    lp = hp - maxp
+    #lp = hp - maxp
     #minf = np.exp2(lp)
     minf = 2 ** int(lp)
     #print lp, minf, np.floor(val / minf)
@@ -93,13 +93,23 @@ def _c_val_isin(val, loprec, fractal, context):
             itm = val
             axis.append(idx)
         vals.append(itm)
-    ovr, eqr = fractal.has_val(*vals)
+    info = fractal.check_val(*vals)
     ov = True
     eq = True
+    rd = np.inf
     for idx in axis:
-        eq = (eq and eqr[idx])
-        ov = (ov and ovr[idx])
-    return ov, eq
+        if info[idx] is None:
+            ov = False
+            eq = False
+            rd = 0
+            break
+        else:
+            ieq, ird = info[idx]
+            eq = (eq and ieq)
+            rd = min(rd, ird)
+    if rd is np.inf:
+        rd = 0
+    return ov, eq, rd
 
 class float_ex(float):
     
@@ -115,7 +125,10 @@ class float_ex(float):
             raise ValueError('float64 overflow.')
         if loprec > vlp:
             loprec = vlp
-        ov, eq = _c_val_isin(val, loprec, fractal, context)
+        ov, eq, rd = _c_val_isin(val, loprec, fractal, context)
+        if rd > 0:
+            loprec += rd
+            val = mask_prec(val, loprec, hiprec)
         if eq:
             return val
         elif ov:
@@ -174,44 +187,41 @@ class fractal(object):
     def __init__(self):
         pass
 
-    def has_val(self, *args):
-        ov = []
-        eq = []
+    def check_val(self, *args):
+        # not over: None
+        # equal: True/False
+        # reduce: int
+        info = []
         for axis, val in enumerate(args):
-            if isinstance(val, float_ex):
-                eq.append(False)
+            if True:
+                if isinstance(val, float_ex):
+                    info.append((False, 0))
+                else:
+                    #info.append((True, 0))
+                    info.append((False, 0))
             else:
-                #eq.append(True)
-                eq.append(False)
-            ov.append(True)
-        return ov, eq
+                info.append(None)
+        return info
 
     def __contains__(self, vals):
         vals = _2list(vals)
-        ov, eq = self.has_val(*vals)
-        for r in ov:
-            if r:
+        try:
+            info = self.check_val(*vals)
+        except:
+            return False
+        for r in info:
+            if not r is None:
                 return True
         else:
             return False
 
-    def __getitem__(self, rngs):
-        rngs = _2list(rngs)
-        for axis, rng in enumerate(rngs):
-            if isinstance(rng, slice):
-                if rng.step is None:
-                    pass
-                else:
-                    pass
-            else:
-                pass
-
 class baker_frac(fractal):
 
-    def __init__(self):
+    def __init__(self, period):
         super(baker_frac, self).__init__()
+        self.period = period
 
-    def has_val(self, x, y):
+    def check_val(self, x, y):
         pass
 
 
