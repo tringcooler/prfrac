@@ -116,8 +116,8 @@ class float_ex(float):
     __metaclass__ = meta_arith_ex
     
     def __new__(cls, val, fractal, context,
-                dprec = FEX_MAX_PRECISION,
-                loprec = None):
+                loprec = None,
+                dprec = FEX_MAX_PRECISION):
         hiprec, _, vlp = prec_info(val)
         minlp = hiprec - FCAP_MAX_PRECISION
         assert vlp >= minlp
@@ -143,7 +143,7 @@ class float_ex(float):
         else:
             raise ValueError('not in the fractal:{0}'.format(val))
 
-    def __init__(self, val, *args):
+    def __init__(self, val, *args, **kargs):
         super(float_ex, self).__init__(val)
 
     def __expand__(self, val, mname, *args):
@@ -164,7 +164,12 @@ class float_ex(float):
         if _chk(mname, ['add', 'sub']):
             maxrlp = minlp
         elif 'mul' in mname:
-            maxrlp = slp + dlp
+            erhp = slp + dhp
+            if isinstance(dst, float_ex):
+                erhp = max(erhp,
+                    dlp + shp)
+            minrlp = slp + dlp
+            maxrlp = erhp
         elif mname == '__div__':
             if isinstance(dst, float_ex):
                 raise TypeError('unsupported operand.')
