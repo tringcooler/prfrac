@@ -41,7 +41,7 @@ class meta_arith_ex(type):
 from sys import float_info as _float_info
 
 FCAP_MAX_PRECISION = _float_info.mant_dig
-FEX_MAX_PRECISION = 40
+FEX_MAX_PRECISION = 30
 
 def highest_prec(val):
     #return np.floor(np.log2(abs(val))) + 1
@@ -115,12 +115,14 @@ class float_ex(float):
     
     __metaclass__ = meta_arith_ex
     
-    def __new__(cls, val, fractal, context, loprec = None):
+    def __new__(cls, val, fractal, context,
+                dprec = FEX_MAX_PRECISION,
+                loprec = None):
         hiprec, _, vlp = prec_info(val)
         minlp = hiprec - FCAP_MAX_PRECISION
         assert vlp >= minlp
         if loprec is None:
-            loprec = hiprec - FEX_MAX_PRECISION
+            loprec = hiprec - dprec
         if loprec < minlp:
             raise ValueError('float64 overflow.')
         if loprec > vlp:
@@ -173,7 +175,7 @@ class float_ex(float):
             if not dst is None:
                 raise TypeError('unsupported operand.')
             maxrlp = slp
-        return type(self)(val, self.fractal, self.context, maxrlp)
+        return type(self)(val, self.fractal, self.context, loprec = maxrlp)
     
 
 def _2list(val):
@@ -217,11 +219,12 @@ class fractal(object):
 
 class baker_frac(fractal):
 
-    def __init__(self, period):
+    def __init__(self, period, dprec = FEX_MAX_PRECISION):
         super(baker_frac, self).__init__()
         self.period = period
+        self.dprec = dprec
 
-    def check_val(self, x, y):
+    def check_val(self, x, y, t):
         pass
 
 
