@@ -25,15 +25,24 @@ class meta_arith_ex(type):
             if mn in attrs:
                 continue
             def mdst(mn):
-                def _wrapper(self, *args, **kargs):
+                def _wrapper(self, *args):
                     #print '_wrapper', mn
                     cls = type(self)
-                    try:
-                        smeth = getattr(super(cls, self), mn)
-                    except:
+                    if not hasattr(cls.__base__, mn):
                         return NotImplemented
-                    r = smeth(*args, **kargs)
-                    return self.__expand__(r, mn, *args)
+                    umeth = getattr(cls.__base__, mn)
+                    if hasattr(self, mn + 'pre__'):
+                        apre = getattr(self, mn + 'pre__')(*args)
+                        args = apre[:-1]
+                        rprec = apre[-1]
+                    elif hasattr(self, '__op__pre__'):
+                        apre = getattr(self, '__op__pre__')(mn, *args)
+                        args = apre[:-1]
+                        rprec = apre[-1]
+                    else:
+                        rprec = None
+                    r = umeth(self, *args)
+                    return self.__expand__(r, rprec)
                 return _wrapper
             attrs[mn] = mdst(mn)
         return type.__new__(metaname, classname, baseclasses, attrs)
