@@ -31,17 +31,11 @@ class meta_arith_ex(type):
                     if not hasattr(cls.__base__, mn):
                         return NotImplemented
                     umeth = getattr(cls.__base__, mn)
-                    if hasattr(self, mn + 'pre__'):
-                        apre = getattr(self, mn + 'pre__')(*args)
-                        args = apre[:-1]
-                        rprec = apre[-1]
-                    elif hasattr(self, '__op__pre__'):
-                        apre = getattr(self, '__op__pre__')(mn, *args)
-                        args = apre[:-1]
-                        rprec = apre[-1]
-                    else:
-                        rprec = None
-                    r = umeth(self, *args)
+                    apre = self.__preop__(mn, *args)
+                    nself = apre[1]
+                    nargs = apre[2:]
+                    rprec = apre[0]
+                    r = umeth(nself, *nargs)
                     return self.__expand__(r, rprec)
                 return _wrapper
             attrs[mn] = mdst(mn)
