@@ -109,6 +109,16 @@ class float_ex(float):
     def __expand__(self, vmin, vmax):
         return type(self)(vmin, highest_prec(vmax - vmin) - 1)
 
+    def mask(self, hiprec = None, loprec = None):
+        if loprec is None:
+            loprec = self.loprec
+            r = self.raw
+        else:
+            r = mask_prec(self.raw, loprec)
+        if not hiprec is None:
+            r -= mask_prec(self.raw, hiprec)
+        return float_ex(r, loprec)
+
 def rand_float_ex(hiprec, loprec):
     return float_ex(random() * prec2val(hiprec), loprec)
 
@@ -131,15 +141,17 @@ class fractal_frame(object):
     def __init__(self, fractal):
         self.fractal = fractal
 
-    def check_contains(self, *args):
-        raise NotImplementedError()
-
     def get_detail(self, *args):
         raise NotImplementedError()
 
     def __contains__(self, vals):
         vals = _2list(vals)
-        return self.check_contains(*vals)
+        try:
+            self.get_detail(*vals)
+        except:
+            return False
+        else:
+            return True
 
 
 from baker import baker_unfolded, baker_unfolded_inv, plot_histories
@@ -176,15 +188,18 @@ class baker_frac(fractal):
         print center_seq, rev_center_seq
         return baker_frac_frame(self, center_seq, rev_center_seq)
 
+    def get_seq_detail(self, seq, val, pos):
+        pos = pos % self.period - self.period
+        #while pos + self.rprec > FCAP_MAX_PRECISION:
+        #    pass
+        #    pos -= self.period
+
 class baker_frac_frame(fractal_frame):
 
     def __init__(self, fractal, center_seq, rev_center_seq):
         super(baker_frac_frame, self).__init__(fractal)
         self.center_seq = center_seq
         self.rev_center_seq = rev_center_seq
-
-    def check_contains(self, x, y, t):
-        pass
 
     def get_detail(self, x, y, t):
         pass
