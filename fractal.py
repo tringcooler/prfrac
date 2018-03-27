@@ -4,7 +4,11 @@ from baker import baker_map, plot_histories
 
 class meta_arith_ex(type):
 
-    method_names = '''
+    unary_op_method_names = '''
+        __neg__ __pos__ __abs__ __invert__
+        '''.split()
+
+    binary_op_method_names = '''
         __add__ __sub__ __mul__ __floordiv__ __mod__ __divmod__
         __pow__ __lshift__ __rshift__ __and__ __xor__ __or__
         __div__ __truediv__ __radd__ __rsub__ __rmul__ __rdiv__
@@ -12,33 +16,31 @@ class meta_arith_ex(type):
         __rlshift__ __rrshift__ __rand__ __rxor__ __ror__
         __iadd__ __isub__ __imul__ __idiv__ __itruediv__ __ifloordiv__
         __imod__ __ipow__ __ilshift__ __irshift__ __iand__ __ixor__
-        __ior__ __neg__ __pos__ __abs__ __invert__
-        '''.split() 
+        __ior__
+        '''.split()
+
+    method_names = unary_op_method_names + binary_op_method_names
     
     def __new__(metaname, classname, baseclasses, attrs):
-        def exp(self, val, mname):
-            return type(self)(val)
-        if not '__expand__' in attrs:
-            attrs['__expand__'] = exp
+        base_cls = baseclasses[0]
         for mn in meta_arith_ex.method_names:
-            #mn = '__{:s}__'.format(mn)
+            if not hasattr(base_cls, mn):
+                continue
+            umeth = getattr(base_cls, mn)
             if mn in attrs:
                 continue
-            def mdst(mn):
-                def _wrapper(self, *args):
-                    #print '_wrapper', mn
-                    cls = type(self)
-                    if not hasattr(cls.__base__, mn):
-                        return NotImplemented
-                    umeth = getattr(cls.__base__, mn)
-                    apre = self.__preop__(mn, *args)
-                    nself = apre[1]
-                    nargs = apre[2:]
-                    rprec = apre[0]
-                    r = umeth(nself, *nargs)
-                    return self.__expand__(r, rprec)
-                return _wrapper
-            attrs[mn] = mdst(mn)
+            elif mn in meta_arith_ex.unary_op_method_names:
+                def mdst1(m):
+                    def _wrapper(self):
+                        return self.__unop__(m)
+                    return _wrapper
+                attrs[mn] = mdst1(umeth)
+            elif mn in meta_arith_ex.binary_op_method_names:
+                def mdst2(m):
+                    def _wrapper(self, val):
+                        return self.__binop__(m, val)
+                    return _wrapper
+                attrs[mn] = mdst2(umeth)
         return type.__new__(metaname, classname, baseclasses, attrs)
 
 from sys import float_info as _float_info
