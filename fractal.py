@@ -110,42 +110,20 @@ class fractal(object):
     def __init__(self):
         pass
 
-    def check_val(self, *args):
-        # not over: None
-        # equal: True/False
-        # reduce: int
-        info = []
-        for axis, val in enumerate(args):
-            if True:
-                if isinstance(val, float_ex):
-                    info.append((False, 0))
-                else:
-                    #info.append((True, 0))
-                    info.append((False, 0))
-            else:
-                info.append(None)
-        return info
+    def check_contains(self, *args):
+        return False
 
     def __contains__(self, vals):
         vals = _2list(vals)
-        try:
-            info = self.check_val(*vals)
-        except:
-            return False
-        for r in info:
-            if not r is None:
-                return True
-        else:
-            return False
+        return self.check_contains(*vals)
 
 class baker_frac(fractal):
 
-    def __init__(self, period, dprec):
+    def __init__(self, period):
         super(baker_frac, self).__init__()
         self.period = period
-        self.dprec = dprec
 
-    def check_val(self, x, y, t):
+    def check_contains(self, x, y, t):
         pass
 
 
