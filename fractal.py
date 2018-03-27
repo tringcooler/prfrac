@@ -64,13 +64,8 @@ def prec_info(val):
         v += 1
     return h, v, l
 
-def mask_prec(val, lp, hp = None):
-    if hp is None:
-        hp = highest_prec(val)
-    #lp = hp - maxp
-    #minf = np.exp2(lp)
+def mask_prec(val, lp):
     minf = 2 ** int(lp)
-    #print lp, minf, np.floor(val / minf)
     return np.floor(val / minf) * minf
 
 def is_divided(s, d, r = None):
@@ -120,9 +115,14 @@ class float_ex(float):
     
     __metaclass__ = meta_arith_ex
     
-    def __new__(cls, val, fractal, context,
-                loprec = None,
-                dprec = FEX_MAX_PRECISION):
+    def __new__(cls, val, loprec):
+        hiprec, _, vlp = prec_info(val)
+        if hiprec - loprec > FCAP_MAX_PRECISION:
+            raise ValueError('float64 overflow.')
+        if vlp < loprec:
+            val = mask_prec(val, loprec, hiprec)
+        
+        
         hiprec, _, vlp = prec_info(val)
         minlp = hiprec - FCAP_MAX_PRECISION
         assert vlp >= minlp
@@ -148,8 +148,13 @@ class float_ex(float):
         else:
             raise ValueError('not in the fractal:{0}'.format(val))
 
-    def __init__(self, val, *args, **kargs):
+    def __init__(self, val, loprec):
         super(float_ex, self).__init__(val)
+        hiprec, _, vlp = prec_info(val)
+        if hiprec - loprec > FCAP_MAX_PRECISION:
+            raise ValueError('float64 overflow.')
+        self.loprec = loprec
+        self.hiprec = hiprec
 
     def __expand__(self, val, mname, *args):
         _chk = lambda mn, lst: reduce(lambda r, v: r or v in mn, lst, False)
