@@ -1,5 +1,6 @@
 
 import numpy as np
+from math import floor, frexp
 from baker import baker_map, plot_histories
 
 class meta_arith_ex(type):
@@ -46,15 +47,13 @@ class meta_arith_ex(type):
 from sys import float_info as _float_info
 
 FCAP_MAX_PRECISION = _float_info.mant_dig
-FEX_MAX_PRECISION = 30
 
 def highest_prec(val):
-    #return np.floor(np.log2(abs(val))) + 1
-    m, e = np.frexp(val)
+    m, e = frexp(val)
     return e
 
 def prec_info(val):
-    m, e = np.frexp(val)
+    m, e = frexp(val)
     h = e
     l = e
     v = 0
@@ -66,14 +65,18 @@ def prec_info(val):
 
 def mask_prec(val, lp):
     minf = 2 ** int(lp)
-    return np.floor(val / minf) * minf
+    return floor(val / minf) * minf
+
+def minmax(*vals):
+    sv = sorted(vals)
+    return sv[0], sv[-1]
 
 def is_divided(s, d, r = None):
     if r is None:
         r = s / d
-    ms, es = np.frexp(s)
-    md, ed = np.frexp(d)
-    mr, er = np.frexp(r)
+    ms, es = frexp(s)
+    md, ed = frexp(d)
+    mr, er = frexp(r)
     bs = 2 ** FCAP_MAX_PRECISION
     si = int(ms * bs)
     di = int(md * bs)
@@ -116,80 +119,38 @@ class float_ex(float):
     __metaclass__ = meta_arith_ex
     
     def __new__(cls, val, loprec):
-        hiprec, _, vlp = prec_info(val)
+        hiprec = highest_prec(val)
         if hiprec - loprec > FCAP_MAX_PRECISION:
             raise ValueError('float64 overflow.')
-        if vlp < loprec:
-            val = mask_prec(val, loprec, hiprec)
-        
-        
-        hiprec, _, vlp = prec_info(val)
-        minlp = hiprec - FCAP_MAX_PRECISION
-        assert vlp >= minlp
-        if loprec is None:
-            loprec = hiprec - dprec
-        if loprec < minlp:
-            raise ValueError('float64 overflow.')
-        if loprec > vlp:
-            loprec = vlp
-        ov, eq, rd = _c_val_isin(val, loprec, fractal, context)
-        if rd > 0:
-            loprec += rd
-            val = mask_prec(val, loprec, hiprec)
-        if eq:
-            return val
-        elif ov:
-            inst = super(float_ex, cls).__new__(cls, val)
-            inst.fractal = fractal
-            inst.context = context
-            inst.hiprec = hiprec
-            inst.loprec = loprec
-            return inst
-        else:
-            raise ValueError('not in the fractal:{0}'.format(val))
+        val = mask_prec(val, loprec)
+        return super(float_ex, cls).__new__(cls, val)
 
     def __init__(self, val, loprec):
         super(float_ex, self).__init__(val)
-        hiprec, _, vlp = prec_info(val)
-        if hiprec - loprec > FCAP_MAX_PRECISION:
-            raise ValueError('float64 overflow.')
+        self.raw = val
         self.loprec = loprec
-        self.hiprec = hiprec
+        self.loprec_val = 2 ** loprec
 
-    def __expand__(self, val, mname, *args):
-        _chk = lambda mn, lst: reduce(lambda r, v: r or v in mn, lst, False)
-        def _prec(val):
-            if hasattr(val, 'hiprec'):
-                return val.hiprec, val.hiprec - val.loprec, val.loprec
-            else:
-                return prec_info(val)
-        shp, svp, slp = _prec(self)
-        if len(args) > 0:
-            dst = args[0]
-            dhp, dvp, dlp = _prec(args[0])
-            maxhp = max(shp, dhp)
-            minlp = min(slp, dlp)
+    def __unop__(self, meth):
+        v1 = meth(self.raw)
+        v2 = meth(self.raw + self.loprec_val)
+        return self.__expand__(*minmax(v1, v2))
+
+    def __binop__(self, meth, val):
+        if isinstance(val, float_ex):
+            val_raw = val.raw
+            val_lpv = val.loprec_val
         else:
-            dst = None
-        if _chk(mname, ['add', 'sub']):
-            maxrlp = minlp
-        elif 'mul' in mname:
-            erhp = slp + dhp
-            if isinstance(dst, float_ex):
-                erhp = max(erhp,
-                    dlp + shp)
-            minrlp = slp + dlp
-            maxrlp = erhp
-        elif mname == '__div__':
-            if isinstance(dst, float_ex):
-                raise TypeError('unsupported operand.')
-            if not is_divided(self, dst, val):
-                raise ValueError('is not divided.')
-            maxrlp = minlp
-        else:
-            if not dst is None:
-                raise TypeError('unsupported operand.')
-            maxrlp = slp
+            val_raw = val
+            val_lpv = 2 ** (highest_prec(val) - FCAP_MAX_PRECISION)
+        v1 = meth(self.raw, val_raw)
+        v2 = meth(self.raw + self.loprec_val, val_raw)
+        v3 = meth(self.raw, val_raw + val_lpv)
+        v4 = meth(self.raw + self.loprec_val, val_raw + val_lpv)
+        return self.__expand__(*minmax(v1, v2, v3, v4))
+
+    def __expand__(self, vmin, vmax):
+        
         return type(self)(val, self.fractal, self.context, loprec = maxrlp)
     
 
