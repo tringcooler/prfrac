@@ -72,13 +72,11 @@ class float_ex(float):
         if hiprec - loprec > FCAP_MAX_PRECISION:
             raise ValueError('float64 overflow.')
         val = mask_prec(val, loprec)
-        return super(float_ex, cls).__new__(cls, val)
-
-    def __init__(self, val, loprec):
-        super(float_ex, self).__init__(val)
-        self.raw = val
-        self.loprec = loprec
-        self.loprec_val = prec2val(loprec)
+        inst = super(float_ex, cls).__new__(cls, val)
+        inst.raw = val
+        inst.loprec = loprec
+        inst.loprec_val = prec2val(loprec)
+        return inst
 
     def __unop__(self, meth):
         v1 = meth(self.raw)
@@ -99,7 +97,7 @@ class float_ex(float):
         return self.__expand__(*minmax(v1, v2, v3, v4))
 
     def __expand__(self, vmin, vmax):
-        return type(self)(vmin, highest_prec(vmax - vmin))
+        return type(self)(vmin, highest_prec(vmax - vmin) - 1)
 
 def _2list(val):
     if not hasattr(val, '__iter__'):
