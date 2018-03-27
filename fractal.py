@@ -52,67 +52,16 @@ def highest_prec(val):
     m, e = frexp(val)
     return e
 
-def prec_info(val):
-    m, e = frexp(val)
-    h = e
-    l = e
-    v = 0
-    while not m.is_integer():
-        m *= 2
-        l -= 1
-        v += 1
-    return h, v, l
+def prec2val(p):
+    return 2 ** int(p)
 
 def mask_prec(val, lp):
-    minf = 2 ** int(lp)
+    minf = prec2val(lp)
     return floor(val / minf) * minf
 
 def minmax(*vals):
     sv = sorted(vals)
     return sv[0], sv[-1]
-
-def is_divided(s, d, r = None):
-    if r is None:
-        r = s / d
-    ms, es = frexp(s)
-    md, ed = frexp(d)
-    mr, er = frexp(r)
-    bs = 2 ** FCAP_MAX_PRECISION
-    si = int(ms * bs)
-    di = int(md * bs)
-    ri = int(mr * bs)
-    rshft = int(53 + es - er - ed)
-    rie = di * ri
-    sie = (rie >> rshft)
-    chb = (rie & ((1 << rshft) - 1))
-    #print si, sie, chb, rie, rshft
-    return si == sie and chb == 0
-
-def _c_val_isin(val, loprec, fractal, context):
-    vals = []
-    axis = []
-    for idx, itm in enumerate(context):
-        if itm is None:
-            itm = val
-            axis.append(idx)
-        vals.append(itm)
-    info = fractal.check_val(*vals)
-    ov = True
-    eq = True
-    rd = np.inf
-    for idx in axis:
-        if info[idx] is None:
-            ov = False
-            eq = False
-            rd = 0
-            break
-        else:
-            ieq, ird = info[idx]
-            eq = (eq and ieq)
-            rd = min(rd, ird)
-    if rd is np.inf:
-        rd = 0
-    return ov, eq, rd
 
 class float_ex(float):
     
@@ -129,7 +78,7 @@ class float_ex(float):
         super(float_ex, self).__init__(val)
         self.raw = val
         self.loprec = loprec
-        self.loprec_val = 2 ** loprec
+        self.loprec_val = prec2val(loprec)
 
     def __unop__(self, meth):
         v1 = meth(self.raw)
@@ -142,7 +91,7 @@ class float_ex(float):
             val_lpv = val.loprec_val
         else:
             val_raw = val
-            val_lpv = 2 ** (highest_prec(val) - FCAP_MAX_PRECISION)
+            val_lpv = prec2val(highest_prec(val) - FCAP_MAX_PRECISION)
         v1 = meth(self.raw, val_raw)
         v2 = meth(self.raw + self.loprec_val, val_raw)
         v3 = meth(self.raw, val_raw + val_lpv)
@@ -150,9 +99,7 @@ class float_ex(float):
         return self.__expand__(*minmax(v1, v2, v3, v4))
 
     def __expand__(self, vmin, vmax):
-        
-        return type(self)(val, self.fractal, self.context, loprec = maxrlp)
-    
+        return type(self)(vmin, highest_prec(vmax - vmin))
 
 def _2list(val):
     if not hasattr(val, '__iter__'):
@@ -195,7 +142,7 @@ class fractal(object):
 
 class baker_frac(fractal):
 
-    def __init__(self, period, dprec = FEX_MAX_PRECISION):
+    def __init__(self, period, dprec):
         super(baker_frac, self).__init__()
         self.period = period
         self.dprec = dprec
