@@ -1,7 +1,7 @@
 
 import numpy as np
 from math import floor, frexp
-from baker import baker_map, plot_histories
+from random import random
 
 class meta_arith_ex(type):
 
@@ -63,14 +63,24 @@ def minmax(*vals):
     sv = sorted(vals)
     return sv[0], sv[-1]
 
+def prec_info(val):
+    m, e = frexp(val)
+    h = e
+    l = e
+    v = 0
+    while not m.is_integer():
+        m *= 2
+        l -= 1
+        v += 1
+    return h, v, l
+
 class float_ex(float):
     
     __metaclass__ = meta_arith_ex
     
     def __new__(cls, val, loprec):
         hiprec = highest_prec(val)
-        if hiprec - loprec > FCAP_MAX_PRECISION:
-            raise ValueError('float64 overflow.')
+        loprec = max(loprec, hiprec - FCAP_MAX_PRECISION)
         val = mask_prec(val, loprec)
         inst = super(float_ex, cls).__new__(cls, val)
         inst.raw = val
@@ -99,6 +109,9 @@ class float_ex(float):
     def __expand__(self, vmin, vmax):
         return type(self)(vmin, highest_prec(vmax - vmin) - 1)
 
+def rand_float_ex(hiprec, loprec):
+    return float_ex(random() * prec2val(hiprec), loprec)
+
 def _2list(val):
     if not hasattr(val, '__iter__'):
         return [val]
@@ -110,20 +123,70 @@ class fractal(object):
     def __init__(self):
         pass
 
+    def make_frame(self, *args):
+        raise NotImplementedError()
+
+class fractal_frame(object):
+
+    def __init__(self, fractal):
+        self.fractal = fractal
+
     def check_contains(self, *args):
-        return False
+        raise NotImplementedError()
+
+    def get_detail(self, *args):
+        raise NotImplementedError()
 
     def __contains__(self, vals):
         vals = _2list(vals)
         return self.check_contains(*vals)
 
+
+from baker import baker_unfolded, baker_unfolded_inv, plot_histories
+
+def fill_prec_rand(val, loprec):
+    if val.loprec <= loprec:
+        return float_ex(val.raw, loprec)
+    else:
+        return val.raw + rand_float_ex(val.loprec, loprec)
+
+def rev_0fltx(val):
+    s = val.raw
+    r = 0
+    for i in xrange(-val.loprec):
+        s *= 2
+        r += (int(s) & 1) << i
+    return r
+
 class baker_frac(fractal):
 
-    def __init__(self, period):
+    def __init__(self, period, rprec):
         super(baker_frac, self).__init__()
         self.period = period
+        self.rprec = rprec
+
+    def make_frame(self, x, y):
+        if not (0 < x < 1 and 0 < y < 1):
+            raise ValueError('invalid value')
+        x = fill_prec_rand(x, -self.rprec)
+        y = fill_prec_rand(y, -self.rprec)
+        print x, y
+        center_seq = rev_0fltx(y) + x
+        rev_center_seq = rev_0fltx(x) + y
+        print center_seq, rev_center_seq
+        return baker_frac_frame(self, center_seq, rev_center_seq)
+
+class baker_frac_frame(fractal_frame):
+
+    def __init__(self, fractal, center_seq, rev_center_seq):
+        super(baker_frac_frame, self).__init__(fractal)
+        self.center_seq = center_seq
+        self.rev_center_seq = rev_center_seq
 
     def check_contains(self, x, y, t):
+        pass
+
+    def get_detail(self, x, y, t):
         pass
 
 
