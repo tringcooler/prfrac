@@ -81,9 +81,12 @@ class float_ex(float):
     
     __metaclass__ = meta_arith_ex
     
-    def __new__(cls, val, loprec):
+    def __new__(cls, val, loprec = None):
         hiprec = highest_prec(val)
-        loprec = max(loprec, hiprec - FCAP_MAX_PRECISION)
+        if loprec is None:
+            loprec = hiprec - FCAP_MAX_PRECISION
+        else:
+            loprec = max(loprec, hiprec - FCAP_MAX_PRECISION)
         val = mask_prec(val, loprec)
         inst = super(float_ex, cls).__new__(cls, val)
         inst.raw = val
@@ -158,7 +161,7 @@ class fractal_frame(object):
 from baker import baker_unfolded, baker_unfolded_inv, plot_histories
 
 def concat_nocheck(v1, v2):
-    return v1.raw + v2
+    return float_ex(v1.raw + v2.raw, v2.loprec)
 
 def fill_prec_rand(val, loprec):
     if val.loprec <= loprec:
@@ -194,6 +197,8 @@ class baker_frac(fractal):
 
     def get_seq_detail(self, seq, val, pos):
         pos = pos % self.period
+        if pos >= self.period / 2:
+            pos -= self.period
         uprec = self.period - 2 * self.rprec
         dst_lp = default_lowest_prec(val)
         dst = (prec2val(pos) * seq).mask(0, None)
@@ -201,22 +206,23 @@ class baker_frac(fractal):
         while dst.loprec > dst_lp:
             if dst.loprec < val.loprec:
                 if chk and not dst.mask(None, val.loprec) == val:
-                    raise ValueError('not contains')
+                    raise ValueError('not contains {0}'.format(val))
             else:
                 if not val.mask(None, dst.loprec) == dst:
-                    raise ValueError('not contains')
-            nxt_lp = dst.loprec + uprec
+                    raise ValueError('not contains {0}'.format(dst))
+            nxt_lp = dst.loprec - uprec
             if nxt_lp < val.loprec:
+                chk = False
                 if dst.loprec > val.loprec:
                     dst = fill_prec_rand(val, nxt_lp)
-                    chk = False
                 else:
                     dst = fill_prec_rand(dst, nxt_lp)
             else:
                 dst = val.mask(None, nxt_lp)
             pos -= self.period
-            assert pos + self.rprec == dst.loprec
+            assert pos + self.rprec == dst.loprec or dst.loprec == dst_lp
             dst = concat_nocheck(dst, prec2val(pos) * seq)
+        return dst
 
 class baker_frac_frame(fractal_frame):
 
