@@ -171,11 +171,15 @@ from baker import baker_unfolded, baker_unfolded_inv, plot_histories
 def concat_nocheck(v1, v2):
     return float_ex(v1.raw + v2.raw, v2.loprec)
 
-def fill_prec_rand(val, loprec):
+def fill_prec_rand(val, loprec, hiprec = None):
     if val.loprec <= loprec:
         return float_ex(val.raw, loprec)
     else:
-        return concat_nocheck(val, rand_float_ex(val.loprec, loprec))
+        if hiprec is None:
+            hiprec = val.loprec
+        else:
+            hiprec = min(hiprec, val.loprec)
+        return concat_nocheck(val, rand_float_ex(hiprec, loprec))
 
 def rev_0fltx(val):
     s = val.raw
@@ -224,13 +228,13 @@ class baker_frac(fractal):
             if nxt_lp < val.loprec:
                 chk = False
                 if dst.loprec > val.loprec:
-                    dst = fill_prec_rand(val, nxt_lp)
+                    dst = fill_prec_rand(val, nxt_lp, 0)
                 else:
-                    dst = fill_prec_rand(dst, nxt_lp)
+                    dst = fill_prec_rand(dst, nxt_lp, 0)
             else:
                 dst = val.mask(None, nxt_lp)
             pos -= self.period
-            assert pos + self.rprec == dst.loprec or dst.loprec == dst_lp
+            assert pos + self.rprec == dst.loprec or dst.loprec <= dst_lp
             dst = concat_nocheck(dst, prec2val(pos) * seq)
         return dst
 
