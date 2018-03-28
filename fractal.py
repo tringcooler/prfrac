@@ -197,7 +197,7 @@ class baker_frac(fractal):
         self.rprec = rprec
 
     def make_frame(self, x, y):
-        if not (0 < x < 1 and 0 < y < 1):
+        if not (0 <= x < 1 and 0 <= y < 1):
             raise ValueError('invalid value')
         x = fill_prec_rand(x, -self.rprec)
         y = fill_prec_rand(y, -self.rprec)
