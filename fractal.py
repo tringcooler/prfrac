@@ -47,6 +47,7 @@ class meta_arith_ex(type):
 from sys import float_info as _float_info
 
 FCAP_MAX_PRECISION = _float_info.mant_dig
+inf = float('inf')
 
 def highest_prec(val):
     m, e = frexp(val)
@@ -56,7 +57,12 @@ def default_lowest_prec(val):
     return highest_prec(val) - FCAP_MAX_PRECISION
 
 def prec2val(p):
-    return 2 ** int(p)
+    if p == inf:
+        return inf
+    elif p == -inf:
+        return 0
+    else:
+        return 2 ** int(p)
 
 def mask_prec(val, lp):
     minf = prec2val(lp)
@@ -84,14 +90,20 @@ class float_ex(float):
     def __new__(cls, val, loprec = None):
         hiprec = highest_prec(val)
         if loprec is None:
-            loprec = hiprec - FCAP_MAX_PRECISION
-        else:
+            if isinstance(val, int) or isinstance(val, long):
+                loprec = -inf
+            else:
+                loprec = hiprec - FCAP_MAX_PRECISION
+        elif not loprec == -inf:
             loprec = max(loprec, hiprec - FCAP_MAX_PRECISION)
-        val = mask_prec(val, loprec)
+            val = mask_prec(val, loprec)
         inst = super(float_ex, cls).__new__(cls, val)
         inst.raw = val
         inst.loprec = loprec
-        inst.loprec_val = prec2val(loprec)
+        if loprec == -inf:
+            inst.loprec_val = 0
+        else:
+            inst.loprec_val = prec2val(loprec)
         return inst
 
     def __unop__(self, meth):
@@ -103,6 +115,9 @@ class float_ex(float):
         if isinstance(val, float_ex):
             val_raw = val.raw
             val_lpv = val.loprec_val
+        elif isinstance(val, int) or isinstance(val, long):
+            val_raw = val
+            val_lpv = 0
         else:
             val_raw = val
             val_lpv = prec2val(default_lowest_prec(val))
@@ -113,7 +128,9 @@ class float_ex(float):
         return self.__expand__(*minmax(v1, v2, v3, v4))
 
     def __expand__(self, vmin, vmax):
-        return type(self)(vmin, highest_prec(vmax - vmin) - 1)
+        vdlt = vmax - vmin
+        vdlt -= prec2val(default_lowest_prec(vdlt))
+        return type(self)(vmin, highest_prec(vdlt))
 
     def mask(self, hiprec = None, loprec = None):
         if loprec is None:
@@ -204,6 +221,7 @@ class baker_frac(fractal):
         dst = (prec2val(pos) * seq).mask(0, None)
         chk = True
         while dst.loprec > dst_lp:
+            print dst, dst.loprec
             if dst.loprec < val.loprec:
                 dm = dst.mask(None, val.loprec)
                 if chk and not dm == val:
@@ -222,6 +240,7 @@ class baker_frac(fractal):
             else:
                 dst = val.mask(None, nxt_lp)
             pos -= self.period
+            print dst, dst.loprec
             assert pos + self.rprec == dst.loprec or dst.loprec == dst_lp
             dst = concat_nocheck(dst, prec2val(pos) * seq)
         return dst
