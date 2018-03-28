@@ -97,10 +97,7 @@ class float_ex(float):
         inst = super(float_ex, cls).__new__(cls, val)
         inst.raw = val
         inst.loprec = loprec
-        if loprec == -inf:
-            inst.loprec_val = 0
-        else:
-            inst.loprec_val = prec2val(loprec)
+        inst.loprec_val = prec2val(loprec)
         return inst
 
     def __unop__(self, meth):
