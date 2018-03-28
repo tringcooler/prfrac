@@ -205,11 +205,13 @@ class baker_frac(fractal):
         chk = True
         while dst.loprec > dst_lp:
             if dst.loprec < val.loprec:
-                if chk and not dst.mask(None, val.loprec) == val:
-                    raise ValueError('not contains {0}'.format(val))
+                dm = dst.mask(None, val.loprec)
+                if chk and not dm == val:
+                    raise ValueError('not contains {0} should be {1}'.format(dm, val))
             else:
-                if not val.mask(None, dst.loprec) == dst:
-                    raise ValueError('not contains {0}'.format(dst))
+                vm = val.mask(None, dst.loprec)
+                if not vm == dst:
+                    raise ValueError('not contains {0} should be {1}'.format(vm, dst))
             nxt_lp = dst.loprec - uprec
             if nxt_lp < val.loprec:
                 chk = False
