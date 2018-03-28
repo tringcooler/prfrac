@@ -52,6 +52,9 @@ def highest_prec(val):
     m, e = frexp(val)
     return e
 
+def default_lowest_prec(val):
+    return highest_prec(val) - FCAP_MAX_PRECISION
+
 def prec2val(p):
     return 2 ** int(p)
 
@@ -99,7 +102,7 @@ class float_ex(float):
             val_lpv = val.loprec_val
         else:
             val_raw = val
-            val_lpv = prec2val(highest_prec(val) - FCAP_MAX_PRECISION)
+            val_lpv = prec2val(default_lowest_prec(val))
         v1 = meth(self.raw, val_raw)
         v2 = meth(self.raw + self.loprec_val, val_raw)
         v3 = meth(self.raw, val_raw + val_lpv)
@@ -112,9 +115,7 @@ class float_ex(float):
     def mask(self, hiprec = None, loprec = None):
         if loprec is None:
             loprec = self.loprec
-            r = self.raw
-        else:
-            r = mask_prec(self.raw, loprec)
+        r = self.raw
         if not hiprec is None:
             r -= mask_prec(self.raw, hiprec)
         return float_ex(r, loprec)
@@ -156,11 +157,14 @@ class fractal_frame(object):
 
 from baker import baker_unfolded, baker_unfolded_inv, plot_histories
 
+def concat_nocheck(v1, v2):
+    return v1.raw + v2
+
 def fill_prec_rand(val, loprec):
     if val.loprec <= loprec:
         return float_ex(val.raw, loprec)
     else:
-        return val.raw + rand_float_ex(val.loprec, loprec)
+        return concat_nocheck(val, rand_float_ex(val.loprec, loprec))
 
 def rev_0fltx(val):
     s = val.raw
@@ -189,7 +193,13 @@ class baker_frac(fractal):
         return baker_frac_frame(self, center_seq, rev_center_seq)
 
     def get_seq_detail(self, seq, val, pos):
-        pos = pos % self.period - self.period
+        pos = pos % self.period
+        dst_lp = default_lowest_prec(val)
+        dst = (prec2val(pos) * seq).mask(0, None)
+        while dst.loprec <= val.loprec:
+            if not val.mask(None, dst.loprec) == dst:
+                raise ValueError('not contains')
+            
         #while pos + self.rprec > FCAP_MAX_PRECISION:
         #    pass
         #    pos -= self.period
