@@ -194,15 +194,29 @@ class baker_frac(fractal):
 
     def get_seq_detail(self, seq, val, pos):
         pos = pos % self.period
+        uprec = self.period - 2 * self.rprec
         dst_lp = default_lowest_prec(val)
         dst = (prec2val(pos) * seq).mask(0, None)
-        while dst.loprec <= val.loprec:
-            if not val.mask(None, dst.loprec) == dst:
-                raise ValueError('not contains')
-            
-        #while pos + self.rprec > FCAP_MAX_PRECISION:
-        #    pass
-        #    pos -= self.period
+        chk = True
+        while dst.loprec > dst_lp:
+            if dst.loprec < val.loprec:
+                if chk and not dst.mask(None, val.loprec) == val:
+                    raise ValueError('not contains')
+            else:
+                if not val.mask(None, dst.loprec) == dst:
+                    raise ValueError('not contains')
+            nxt_lp = dst.loprec + uprec
+            if nxt_lp < val.loprec:
+                if dst.loprec > val.loprec:
+                    dst = fill_prec_rand(val, nxt_lp)
+                    chk = False
+                else:
+                    dst = fill_prec_rand(dst, nxt_lp)
+            else:
+                dst = val.mask(None, nxt_lp)
+            pos -= self.period
+            assert pos + self.rprec == dst.loprec
+            dst = concat_nocheck(dst, prec2val(pos) * seq)
 
 class baker_frac_frame(fractal_frame):
 
