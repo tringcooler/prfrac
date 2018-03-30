@@ -160,13 +160,13 @@ class fractal_frame(object):
         vals = _2list(vals)
         try:
             self.get_detail(*vals)
-        except:
+        except ValueError:
             return False
+        except:
+            raise
         else:
             return True
 
-
-from baker import baker_unfolded, baker_unfolded_inv, plot_histories
 
 def concat_nocheck(v1, v2):
     return float_ex(v1.raw + v2.raw, v2.loprec)
@@ -246,7 +246,13 @@ class baker_frac_frame(fractal_frame):
         self.rev_center_seq = rev_center_seq
 
     def get_detail(self, x, y, t):
-        pass
+        pos = int(t)
+        nx = self.fractal.get_seq_detail(self.center_seq, x, pos)
+        ny = self.fractal.get_seq_detail(self.rev_center_seq, y, -pos)
+        return nx, ny, t
+
+
+from baker import baker_unfolded, plot_histories
 
 
 
