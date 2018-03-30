@@ -103,7 +103,7 @@ class float_ex(float):
     
     def __new__(cls, val, loprec = None):
         if isinstance(val, str):
-            val = val.split('/')
+            val = val.split(':')
             if len(val) > 1:
                 loprec = int(val[1])
             val = float(val[0])
@@ -151,7 +151,7 @@ class float_ex(float):
         return float_ex(r, loprec)
 
     def __repr__(self):
-        return super(float_ex, self).__repr__() + '/' + str(self.loprec)
+        return super(float_ex, self).__repr__() + ':' + str(self.loprec)
 
 def rand_float_ex(hiprec, loprec):
     return float_ex(random() * prec2val(hiprec), loprec)
