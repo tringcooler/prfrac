@@ -6,13 +6,13 @@ def baker_unfolded(ar):
     x, y = ar
     x2 = 2. * x
     x2f = np.floor(x2)
-    return np.array([x2 - x2f, (y + x2f) / 2.])
+    return [x2 - x2f, (y + x2f) / 2.]
 
 def baker_unfolded_inv(ar):
     x, y = ar
     y2 = 2. * y
     y2f = np.floor(y2)
-    return np.array([(x + y2f) / 2., y2 - y2f])
+    return [(x + y2f) / 2., y2 - y2f]
 
 def baker_map(src, n = 1, inv = False):
     if inv:
@@ -119,7 +119,11 @@ def plots(n):
     return np.array(sbplts).reshape(-1)[:n]
 
 def plot_history(src, sbplts, color = 'b'):
-    n = len(sbplts)
+    if hasattr(sbplts, '__iter__'):
+        n = len(sbplts)
+    else:
+        n = sbplts + 1
+        sbplts = plots(n)
     def _plt(s, i):
         sbplts[i].plot(s[:,0], s[:,1], color + '.')
     dst = src
@@ -127,6 +131,7 @@ def plot_history(src, sbplts, color = 'b'):
     for i in xrange(1, n):
         dst = baker_map(dst)
         _plt(dst, i)
+    plt.show()
 
 def plot_histories(src, dsts, sbplts):
     if hasattr(sbplts, '__iter__'):
@@ -146,6 +151,7 @@ def plot_histories(src, dsts, sbplts):
         for j in xrange(0, n):
             dst = dsts[j][0]
             _plt(dst[flt], j + 1, c)
+    plt.show()
 
 if __name__ == '__main__':
     pr = .0001
@@ -162,5 +168,4 @@ if __name__ == '__main__':
     s, rs = test2(src_slc, dst_slc, nm)
     sbplts = plots(nm + 1)
     plot_histories(s, rs, sbplts)
-    plt.show()
 

@@ -267,26 +267,21 @@ class baker_frac_frame(fractal_frame):
 
 import baker
 
-def baker_unfolded_frac(frm):
-    x = frm['x']
-    y = frm['y']
-    t = frm['t']
-    frame = frm['frame']
-    x2 = 2. * x
-    x2f = floor(x2)
-    x, y = [x2 - x2f, (y + x2f) / 2.]
-    t += 1
-    x, y, _ = frame.get_detail(x, y, t)
-    return {
-        'x': x,
-        'y': y,
-        't': t,
-        'frame': frame}
-
 def baker_map_frac(src, n = 1):
+    def _map(ar):
+        vx, vy, fc = ar
+        frame = fc['frame']
+        x, y, t = fc['context']
+        x, y = baker.baker_unfolded([x, y])
+        t += 1
+        x, y, _ = frame.get_detail(x, y, t)
+        return np.array([
+            x, y, {
+                'frame': frame,
+                'context': (x, y, t)}])
     dst = src
     for i in xrange(n):
-        dst = np.apply_along_axis(baker_unfolded_frac, 0, dst)
+        dst = np.apply_along_axis(_map, 1, dst)
     return dst
 
 def make_init_data(src_slc, frac):
@@ -297,18 +292,31 @@ def make_init_data(src_slc, frac):
         y = float_ex(y, -frac.max_free_prec)
         frame = frac.make_frame(x, y)
         x, y, _ = frame.get_detail(x, y, 0)
-        return {
-            'x': x,
-            'y': y,
-            't': 0,
-            'frame': frame}
+        return np.array([
+            x, y, {
+                'frame': frame,
+                'context': (x, y, 0)}])
     return np.apply_along_axis(_init, 1, src)
 
+def test(s, n):
+    info = []
+    r = s
+    for i in xrange(n):
+        r = baker_map_frac(r)
+        f = baker.r2s[:,0:2]
+        info.append([
+            r, f,
+        ])
+    return s, info
+
 def main():
-    frac = baker_frac(20, 6)
     pr = .01
+    nm = 20
+    frac = baker_frac(nm, 6)
     src_slc = baker.r2s[.78:.83:pr, .14:.19:pr]
     src = make_init_data(src_slc, frac)
+    s, rs = test(src, nm)
+    baker.plot_histories(s, rs, nm)
     return src
     
 
