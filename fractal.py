@@ -191,7 +191,10 @@ class fractal_frame(object):
 
 
 def concat_nocheck(v1, v2):
-    return float_ex(v1.raw + v2.raw, v2.loprec)
+    if highest_prec(v1) - v1.loprec >= FCAP_MAX_PRECISION:
+        return v1
+    else:
+        return float_ex(v1.raw + v2.raw, v2.loprec)
 
 def fill_prec_rand(val, loprec, hiprec = None):
     if val.loprec <= loprec:
@@ -201,7 +204,10 @@ def fill_prec_rand(val, loprec, hiprec = None):
             hiprec = val.loprec
         else:
             hiprec = min(hiprec, val.loprec)
-        return concat_nocheck(val, rand_float_ex(hiprec, loprec))
+        #return concat_nocheck(val, rand_float_ex(hiprec, loprec))
+        rv = rand_float_ex(hiprec, loprec)
+        print 'fill', repr(val), repr(rv)
+        return concat_nocheck(val, rv)
 
 def rev_0fltx(val):
     s = val.raw
@@ -334,5 +340,5 @@ def main():
     #baker.plot_history(src, 3, mapf = baker_map_frac)
     return src
     
-if __name__ == '__main__':
+if __name__ == '1__main__':
     src = main()
