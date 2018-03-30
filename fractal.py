@@ -31,17 +31,17 @@ class meta_arith_ex(type):
             if mn in attrs:
                 continue
             elif mn in meta_arith_ex.unary_op_method_names:
-                def mdst1(m, mn):
+                def mdst1(m):
                     def _wrapper(self):
-                        return self.__unop__(m, mn)
+                        return self.__unop__(m)
                     return _wrapper
-                attrs[mn] = mdst1(umeth, mn)
+                attrs[mn] = mdst1(umeth)
             elif mn in meta_arith_ex.binary_op_method_names:
-                def mdst2(m, mn):
+                def mdst2(m):
                     def _wrapper(self, val):
-                        return self.__binop__(m, val, mn)
+                        return self.__binop__(m, val)
                     return _wrapper
-                attrs[mn] = mdst2(umeth, mn)
+                attrs[mn] = mdst2(umeth)
         return type.__new__(metaname, classname, baseclasses, attrs)
 
 from sys import float_info as _float_info
@@ -119,41 +119,22 @@ class float_ex(float):
         inst.loprec_val = prec2val(loprec)
         return inst
 
-    def __unop__(self, meth, mname):
+    def __unop__(self, meth):
         v1 = meth(self.raw)
         v2 = meth(self.raw + self.loprec_val)
         return self.__expand__(*minmax(v1, v2))
 
-    def __binop__(self, meth, val, mname):
+    def __binop__(self, meth, val):
         if isinstance(val, float_ex):
             val_raw = val.raw
             val_lpv = val.loprec_val
         else:
             val_raw = val
             val_lpv = 0
-        def dir_meth(v1, v2):
-            if 'div' in mname:
-                return meth(v1, v2)
-            lp1 = default_lowest_prec(v1)
-            lp2 = default_lowest_prec(v2)
-            lp = min(lp1, lp2)
-            lpv = prec2val(-lp)
-            iv1 = int(v1 * lpv)
-            iv2 = int(v2 * lpv)
-            #ir = meth(iv1, iv2)
-            ir = getattr(iv1, mname)(iv2)
-            print mname, v1, v2, iv1, iv2, ir, lpv
-            ir = float(ir)
-            if 'add' in mname or 'sub' in mname:
-                return ir / lpv
-            elif 'mul' in mname:
-                return ir / lpv / lpv
-            else:
-                return ir
-        v1 = dir_meth(self.raw, val_raw)
-        v2 = dir_meth(self.raw + self.loprec_val, val_raw)
-        v3 = dir_meth(self.raw, val_raw + val_lpv)
-        v4 = dir_meth(self.raw + self.loprec_val, val_raw + val_lpv)
+        v1 = meth(self.raw, val_raw)
+        v2 = meth(self.raw + self.loprec_val, val_raw)
+        v3 = meth(self.raw, val_raw + val_lpv)
+        v4 = meth(self.raw + self.loprec_val, val_raw + val_lpv)
         return self.__expand__(*minmax(v1, v2, v3, v4))
 
     def __expand__(self, vmin, vmax):
@@ -361,5 +342,5 @@ def main():
     #baker.plot_history(src, 3, mapf = baker_map_frac)
     return src
     
-if __name__ == '1__main__':
+if __name__ == '__main__':
     src = main()
