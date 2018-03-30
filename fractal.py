@@ -83,6 +83,20 @@ def prec_info(val):
         v += 1
     return h, v, l
 
+def fbin(val):
+    val = float(val)
+    if val.is_integer():
+        return bin(int(val)) + '.0'
+    _, _, l = prec_info(val)
+    t1 = val * prec2val(-l)
+    assert t1.is_integer()
+    _, rs = bin(int(t1)).split('b')
+    rs = ('{:0>' + str(-l + 1) + 's}').format(rs)
+    rs = '0b' + rs[:l] + '.' + rs[l:]
+    if val < 0:
+        rs = '-' + rs
+    return rs
+
 class float_ex(float):
     
     __metaclass__ = meta_arith_ex
@@ -252,7 +266,13 @@ class baker_frac_frame(fractal_frame):
         return nx, ny, t
 
 
-from baker import baker_unfolded, plot_histories
+import baker
 
-
+def baker_map_frac(src, n = 1):
+    def f(ar):
+        return baker_unfolded(ar)
+    dst = src
+    for i in xrange(n):
+        dst = np.apply_along_axis(f, 1, dst)
+    return dst
 
