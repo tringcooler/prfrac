@@ -209,16 +209,15 @@ class baker_frac(fractal):
         super(baker_frac, self).__init__()
         self.period = period
         self.rprec = rprec
+        self.max_free_prec = period - rprec
 
     def make_frame(self, x, y):
         if not (0 <= x < 1 and 0 <= y < 1):
             raise ValueError('invalid value')
         x = fill_prec_rand(x, -self.rprec)
         y = fill_prec_rand(y, -self.rprec)
-        print x, y
         center_seq = rev_0fltx(y) + x
         rev_center_seq = rev_0fltx(x) + y
-        print center_seq, rev_center_seq
         return baker_frac_frame(self, center_seq, rev_center_seq)
 
     def get_seq_detail(self, seq, val, pos):
@@ -268,11 +267,48 @@ class baker_frac_frame(fractal_frame):
 
 import baker
 
+def baker_unfolded_frac(frm):
+    x = frm['x']
+    y = frm['y']
+    t = frm['t']
+    frame = frm['frame']
+    x2 = 2. * x
+    x2f = floor(x2)
+    x, y = [x2 - x2f, (y + x2f) / 2.]
+    t += 1
+    x, y, _ = frame.get_detail(x, y, t)
+    return {
+        'x': x,
+        'y': y,
+        't': t,
+        'frame': frame}
+
 def baker_map_frac(src, n = 1):
-    def f(ar):
-        return baker_unfolded(ar)
     dst = src
     for i in xrange(n):
-        dst = np.apply_along_axis(f, 1, dst)
+        dst = np.apply_along_axis(baker_unfolded_frac, 0, dst)
     return dst
+
+def make_init_data(src_slc, frac):
+    src, _ = baker._init_test(src_slc)
+    def _init(ar):
+        x, y = ar
+        x = float_ex(x, -frac.max_free_prec)
+        y = float_ex(y, -frac.max_free_prec)
+        frame = frac.make_frame(x, y)
+        x, y, _ = frame.get_detail(x, y, 0)
+        return {
+            'x': x,
+            'y': y,
+            't': 0,
+            'frame': frame}
+    return np.apply_along_axis(_init, 1, src)
+
+def main():
+    frac = baker_frac(20, 6)
+    pr = .01
+    src_slc = baker.r2s[.78:.83:pr, .14:.19:pr]
+    src = make_init_data(src_slc, frac)
+    return src
+    
 
