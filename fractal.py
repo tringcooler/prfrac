@@ -243,16 +243,33 @@ class baker_frac(fractal):
         uprec = self.period - 2 * self.rprec
         dst_lp = default_lowest_prec(val)
         dst = (prec2val(pos) * seq).mask(0, None)
+        if pos + self.rprec < 0:
+            dst = concat_direct(
+                val.mask(None, pos + self.rprec),
+                dst)
         chk = True
+        decval = False
         while dst.loprec > dst_lp:
             if dst.loprec < val.loprec:
                 dm = dst.mask(None, val.loprec)
                 if chk and not dm == val:
+                    if not decval:
+                        #print 'decval', repr(val),
+                        val -= prec2val(dst_lp)
+                        #print repr(val)
+                        decval = True
+                        continue
                     raise ValueError(
                         'not contains {:s} should be {:s}'.format(repr(dm), repr(val)))
             else:
                 vm = val.mask(None, dst.loprec)
                 if not vm == dst:
+                    if not decval:
+                        #print 'decval', repr(val),
+                        val -= prec2val(dst_lp)
+                        #print repr(val)
+                        decval = True
+                        continue
                     raise ValueError(
                         'not contains {:s} should be {:s}'.format(repr(vm), repr(dst)))
             nxt_lp = dst.loprec - uprec
@@ -333,13 +350,13 @@ def test(s, n):
         print 'done', i
 
 def main():
-    pr = .01
+    pr = .001
     nm = 20
     frac = baker_frac(nm, 6)
     src_slc = baker.r2s[.78:.83:pr, .14:.19:pr]
     src = make_init_data(src_slc, frac)
-    test(src, 20)
-    #baker.plot_history(src, 3, mapf = baker_map_frac)
+    #test(src, 20)
+    baker.plot_history(src, nm, mapf = baker_map_frac)
     return src
     
 if __name__ == '__main__':
