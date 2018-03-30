@@ -102,6 +102,11 @@ class float_ex(float):
     __metaclass__ = meta_arith_ex
     
     def __new__(cls, val, loprec = None):
+        if isinstance(val, str):
+            val = val.split('/')
+            if len(val) > 1:
+                loprec = int(val[1])
+            val = float(val[0])
         hiprec = highest_prec(val)
         if loprec is None:
             loprec = -inf
@@ -144,6 +149,9 @@ class float_ex(float):
         if not hiprec is None:
             r -= mask_prec(self.raw, hiprec)
         return float_ex(r, loprec)
+
+    def __repr__(self):
+        return super(float_ex, self).__repr__() + '/' + str(self.loprec)
 
 def rand_float_ex(hiprec, loprec):
     return float_ex(random() * prec2val(hiprec), loprec)
@@ -232,11 +240,13 @@ class baker_frac(fractal):
             if dst.loprec < val.loprec:
                 dm = dst.mask(None, val.loprec)
                 if chk and not dm == val:
-                    raise ValueError('not contains {0} should be {1}'.format(dm, val))
+                    raise ValueError(
+                        'not contains {:s} should be {:s}'.format(repr(dm), repr(val)))
             else:
                 vm = val.mask(None, dst.loprec)
                 if not vm == dst:
-                    raise ValueError('not contains {0} should be {1}'.format(vm, dst))
+                    raise ValueError(
+                        'not contains {:s} should be {:s}'.format(repr(vm), repr(dst)))
             nxt_lp = dst.loprec - uprec
             if nxt_lp < val.loprec:
                 chk = False
@@ -272,13 +282,21 @@ def baker_map_frac(src, n = 1):
         vx, vy, fc = ar
         frame = fc['frame']
         x, y, t = fc['context']
+        trac = fc['trace']
         x, y = baker.baker_unfolded([x, y])
         t += 1
-        x, y, _ = frame.get_detail(x, y, t)
+        ox, oy = x, y
+        try:
+            x, y, _ = frame.get_detail(x, y, t)
+        except ValueError:
+            print (x, y), trac
+            raise
+        #print t, ':', (vx, vy), '->', (x, y)
         return np.array([
             x, y, {
                 'frame': frame,
-                'context': (x, y, t)}])
+                'context': (x, y, t),
+                'trace': [(ox, oy, x, y)] + trac}])
     dst = src
     for i in xrange(n):
         dst = np.apply_along_axis(_map, 1, dst)
@@ -291,23 +309,20 @@ def make_init_data(src_slc, frac):
         x = float_ex(x, -frac.max_free_prec)
         y = float_ex(y, -frac.max_free_prec)
         frame = frac.make_frame(x, y)
+        ox, oy = x, y
         x, y, _ = frame.get_detail(x, y, 0)
         return np.array([
             x, y, {
                 'frame': frame,
-                'context': (x, y, 0)}])
+                'context': (x, y, 0),
+                'trace': [(ox, oy, x, y)]}])
     return np.apply_along_axis(_init, 1, src)
 
 def test(s, n):
-    info = []
     r = s
     for i in xrange(n):
         r = baker_map_frac(r)
-        f = baker.r2s[:,0:2]
-        info.append([
-            r, f,
-        ])
-    return s, info
+        print 'done', i
 
 def main():
     pr = .01
@@ -315,8 +330,9 @@ def main():
     frac = baker_frac(nm, 6)
     src_slc = baker.r2s[.78:.83:pr, .14:.19:pr]
     src = make_init_data(src_slc, frac)
-    s, rs = test(src, nm)
-    baker.plot_histories(s, rs, nm)
+    test(src, 20)
+    #baker.plot_history(src, 3, mapf = baker_map_frac)
     return src
     
-
+if __name__ == '__main__':
+    src = main()

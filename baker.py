@@ -118,7 +118,7 @@ def plots(n):
     f, sbplts = plt.subplots(ny, nx, sharex=True, sharey=True)
     return np.array(sbplts).reshape(-1)[:n]
 
-def plot_history(src, sbplts, color = 'b'):
+def plot_history(src, sbplts, color = 'b', mapf = baker_map):
     if hasattr(sbplts, '__iter__'):
         n = len(sbplts)
     else:
@@ -129,7 +129,7 @@ def plot_history(src, sbplts, color = 'b'):
     dst = src
     _plt(dst, 0)
     for i in xrange(1, n):
-        dst = baker_map(dst)
+        dst = mapf(dst)
         _plt(dst, i)
     plt.show()
 
