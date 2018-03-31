@@ -354,9 +354,13 @@ def main():
     nm = 20
     frac = baker_frac(nm, 6)
     src_slc = baker.r2s[.78:.83:pr, .14:.19:pr]
-    src = make_init_data(src_slc, frac)
-    #test(src, 20)
-    baker.plot_history(src, nm, mapf = baker_map_frac)
+    if True:
+        src = make_init_data(src_slc, frac)
+        #test(src, 20)
+        baker.plot_history(src, nm, mapf = baker_map_frac)
+    else:
+        src, _ = baker._init_test(src_slc)
+        baker.plot_history(src, nm)
     return src
     
 if __name__ == '__main__':
